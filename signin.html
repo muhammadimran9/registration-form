@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .social-btn:hover {
+            background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+        .google-btn {
+            border-color: #db4437;
+        }
+        .github-btn {
+            border-color: #333;
+        }
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="auth-box">
+            <h1>Welcome Back</h1>
+            <p>Sign in to your account</p>
+            
+            <!-- Social Login Options -->
+            <a href="#" class="social-btn google-btn" onclick="signInWithGoogle()">
+                <i class="fab fa-google"></i>
+                Continue with Google
+            </a>
+            
+            <a href="#" class="social-btn github-btn" onclick="signInWithGitHub()">
+                <i class="fab fa-github"></i>
+                Continue with GitHub
+            </a>
+            
+            <div class="divider">
+                <span>or sign in with email</span>
+            </div>
+            
+            <!-- Email Login Form -->
+            <form id="signinForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+            
+            <div id="message" class="message"></div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <p>Don't have an account? <a href="student-registration.html" style="color: #667eea;">Sign Up</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, signInWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup } from './firebase-config.js';
+        
+        // Email signin
+        document.getElementById('signinForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                messageDiv.innerHTML = '<div class="success">Signed in successfully!</div>';
+                setTimeout(() => window.location.href = 'track.html', 1500);
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        });
+        
+        // Google signin
+        window.signInWithGoogle = async () => {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+                window.location.href = 'track.html';
+            } catch (error) {
+                document.getElementById('message').innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        };
+        
+        // GitHub signin
+        window.signInWithGitHub = async () => {
+            try {
+                const provider = new GithubAuthProvider();
+                await signInWithPopup(auth, provider);
+                window.location.href = 'track.html';
+            } catch (error) {
+                document.getElementById('message').innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>

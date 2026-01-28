@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .track-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .track-header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .track-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .search-form {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .search-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .student-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            color: #666;
+        }
+        
+        .no-result {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .search-form {
+                flex-direction: column;
+            }
+            
+            .track-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .student-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="track-container">
+        <div class="track-header">
+            <div>
+                <h1><i class="fas fa-search"></i> Student Tracker</h1>
+                <p id="userInfo">Loading user information...</p>
+            </div>
+            <div>
+                <button class="btn" onclick="handleLogout()" style="background: #e74c3c; color: white;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+        
+        <div class="track-card">
+            <h2>Search Student Records</h2>
+            <p style="color: #666; margin-bottom: 20px;">Enter CNIC to find student registration details</p>
+            
+            <div class="search-form">
+                <input type="text" id="searchCnic" class="search-input" placeholder="Enter CNIC (12345-1234567-1)" pattern="[0-9]{5}-[0-9]{7}-[0-9]{1}">
+                <button id="searchBtn" class="search-btn">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            
+            <div id="searchResult"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, onAuthStateChanged, signOut } from './firebase-config.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
+        import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDF16WkCH9lT-33uPFOZU1R3o_3yqcRNzU",
+            authDomain: "eligible-6c799.firebaseapp.com",
+            projectId: "eligible-6c799",
+            storageBucket: "eligible-6c799.firebasestorage.app",
+            messagingSenderId: "721212595786",
+            appId: "1:721212595786:web:37347bf4baad9b737f10b3"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Check authentication
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('userInfo').textContent = `Welcome, ${user.displayName || user.email}`;
+            } else {
+                window.location.href = 'signin.html';
+            }
+        });
+        
+        // CNIC validation
+        function validateCNIC(cnic) {
+            const cnicPattern = /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
+            return cnicPattern.test(cnic);
+        }
+        
+        // Search student
+        async function searchStudent(cnic) {
+            try {
+                const q = query(collection(db, 'students'), where('cnic', '==', cnic));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    return null;
+                }
+                
+                let studentData = null;
+                querySnapshot.forEach((doc) => {
+                    studentData = { id: doc.id, ...doc.data() };
+                });
+                
+                return studentData;
+            } catch (error) {
+                console.error('Search error:', error);
+                throw error;
+            }
+        }
+        
+        // Display search result
+        function displayResult(student) {
+            const resultDiv = document.getElementById('searchResult');
+            
+            if (!student) {
+                resultDiv.innerHTML = `
+                    <div class="result-card" style="border-left-color: #e74c3c;">
+                        <div class="no-result">
+                            <i class="fas fa-times-circle" style="font-size: 48px; color: #e74c3c; margin-bottom: 15px;"></i>
+                            <h3>Student Not Found</h3>
+                            <p>No student record found with this CNIC number.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const registrationDate = new Date(student.registrationDate).toLocaleDateString();
+            const dateOfBirth = new Date(student.dateOfBirth).toLocaleDateString();
+            
+            resultDiv.innerHTML = `
+                <div class="result-card" style="border-left-color: #28a745;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <i class="fas fa-check-circle" style="color: #28a745; font-size: 24px;"></i>
+                        <h3 style="margin: 0; color: #28a745;">Student Found</h3>
+                    </div>
+                    
+                    <div class="student-info">
+                        <div class="info-item">
+                            <div class="info-label">Full Name</div>
+                            <div class="info-value">${student.firstName} ${student.lastName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">CNIC</div>
+                            <div class="info-value">${student.cnic}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">${student.email}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Phone</div>
+                            <div class="info-value">${student.phone}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Date of Birth</div>
+                            <div class="info-value">${dateOfBirth}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Grade</div>
+                            <div class="info-value">Grade ${student.grade}</div>
+                        </div>
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <div class="info-label">Address</div>
+                            <div class="info-value">${student.address}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Registration Date</div>
+                            <div class="info-value">${registrationDate}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Search button event
+        document.getElementById('searchBtn').addEventListener('click', async () => {
+            const cnic = document.getElementById('searchCnic').value.trim();
+            const resultDiv = document.getElementById('searchResult');
+            
+            if (!cnic) {
+                resultDiv.innerHTML = `
+                    <div class="result-card" style="border-left-color: #ffc107;">
+                        <div style="color: #856404;">
+                            <i class="fas fa-exclamation-triangle"></i> Please enter a CNIC number
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (!validateCNIC(cnic)) {
+                resultDiv.innerHTML = `
+                    <div class="result-card" style="border-left-color: #ffc107;">
+                        <div style="color: #856404;">
+                            <i class="fas fa-exclamation-triangle"></i> Invalid CNIC format. Use: 12345-1234567-1
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                resultDiv.innerHTML = `
+                    <div class="result-card">
+                        <div style="text-align: center; color: #666;">
+                            <i class="fas fa-spinner fa-spin"></i> Searching...
+                        </div>
+                    </div>
+                `;
+                
+                const student = await searchStudent(cnic);
+                displayResult(student);
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-card" style="border-left-color: #e74c3c;">
+                        <div style="color: #721c24;">
+                            <i class="fas fa-exclamation-triangle"></i> Search failed: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        // Format CNIC input
+        document.getElementById('searchCnic').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 5) {
+                value = value.substring(0, 5) + '-' + value.substring(5);
+            }
+            if (value.length >= 13) {
+                value = value.substring(0, 13) + '-' + value.substring(13, 14);
+            }
+            e.target.value = value;
+        });
+        
+        // Enter key search
+        document.getElementById('searchCnic').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('searchBtn').click();
+            }
+        });
+        
+        // Logout function
+        window.handleLogout = async () => {
+            try {
+                await signOut(auth);
+                window.location.href = 'signin.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        };
+    </script>
+</body>
+</html>
