@@ -65,11 +65,6 @@
                 Continue with Google
             </button>
             
-            <button type="button" class="social-btn github-btn" id="githubSignin">
-                <i class="fab fa-github"></i>
-                Continue with GitHub
-            </button>
-            
             <div class="divider">
                 <span>or sign in with email</span>
             </div>
@@ -100,7 +95,7 @@
     </div>
 
     <script type="module">
-        import { auth, signInWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup } from './firebase-config.js';
+        import { auth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, db, collection, query, where, getDocs } from './firebase-config.js';
         
         // Wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
@@ -137,51 +132,25 @@
                         provider.addScope('profile');
                         
                         const result = await signInWithPopup(auth, provider);
-                        console.log('Google signin result:', result);
+                        const user = result.user;
                         
-                        // Check if this is a new user
-                        if (result.additionalUserInfo && result.additionalUserInfo.isNewUser) {
-                            // Delete the newly created user
-                            await result.user.delete();
-                            messageDiv.innerHTML = `<div class="error">No account found with this Google account. Please sign up first.</div>`;
+                        // Check if user exists in Firestore
+                        const q = query(collection(db, 'users'), where('email', '==', user.email));
+                        const querySnapshot = await getDocs(q);
+                        
+                        if (querySnapshot.empty) {
+                            // User not found in database, delete from auth and show error
+                            await user.delete();
+                            messageDiv.innerHTML = '<div class="error">No account found with this Google account. Please sign up first.</div>';
                             return;
                         }
                         
+                        console.log('Google signin successful:', user);
                         messageDiv.innerHTML = '<div class="success">Google signin successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {
                         console.error('Google signin error:', error);
                         messageDiv.innerHTML = `<div class="error">Google signin failed: ${error.message}</div>`;
-                    }
-                });
-            }
-            
-            // GitHub signin
-            const githubBtn = document.getElementById('githubSignin');
-            if (githubBtn) {
-                githubBtn.addEventListener('click', async () => {
-                    const messageDiv = document.getElementById('message');
-                    try {
-                        console.log('Starting GitHub signin...');
-                        const provider = new GithubAuthProvider();
-                        provider.addScope('user:email');
-                        
-                        const result = await signInWithPopup(auth, provider);
-                        console.log('GitHub signin result:', result);
-                        
-                        // Check if this is a new user
-                        if (result.additionalUserInfo && result.additionalUserInfo.isNewUser) {
-                            // Delete the newly created user
-                            await result.user.delete();
-                            messageDiv.innerHTML = `<div class="error">No account found with this GitHub account. Please sign up first.</div>`;
-                            return;
-                        }
-                        
-                        messageDiv.innerHTML = '<div class="success">GitHub signin successful! Redirecting...</div>';
-                        setTimeout(() => window.location.href = 'track.html', 1000);
-                    } catch (error) {
-                        console.error('GitHub signin error:', error);
-                        messageDiv.innerHTML = `<div class="error">GitHub signin failed: ${error.message}</div>`;
                     }
                 });
             }
