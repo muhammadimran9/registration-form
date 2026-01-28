@@ -60,15 +60,15 @@
             <p>Sign in to your account</p>
             
             <!-- Social Login Options -->
-            <a href="#" class="social-btn google-btn" onclick="signInWithGoogle()">
+            <button type="button" class="social-btn google-btn" id="googleSignin">
                 <i class="fab fa-google"></i>
                 Continue with Google
-            </a>
+            </button>
             
-            <a href="#" class="social-btn github-btn" onclick="signInWithGitHub()">
+            <button type="button" class="social-btn github-btn" id="githubSignin">
                 <i class="fab fa-github"></i>
                 Continue with GitHub
-            </a>
+            </button>
             
             <div class="divider">
                 <span>or sign in with email</span>
@@ -102,44 +102,90 @@
     <script type="module">
         import { auth, signInWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup } from './firebase-config.js';
         
-        // Email signin
-        document.getElementById('signinForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Wait for DOM to load
+        document.addEventListener('DOMContentLoaded', function() {
             
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const messageDiv = document.getElementById('message');
+            // Email signin
+            const signinForm = document.getElementById('signinForm');
+            if (signinForm) {
+                signinForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    const messageDiv = document.getElementById('message');
+                    
+                    try {
+                        await signInWithEmailAndPassword(auth, email, password);
+                        messageDiv.innerHTML = '<div class="success">Signed in successfully!</div>';
+                        setTimeout(() => window.location.href = 'track.html', 1500);
+                    } catch (error) {
+                        messageDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                    }
+                });
+            }
             
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                messageDiv.innerHTML = '<div class="success">Signed in successfully!</div>';
-                setTimeout(() => window.location.href = 'track.html', 1500);
-            } catch (error) {
-                messageDiv.innerHTML = `<div class="error">${error.message}</div>`;
+            // Google signin
+            const googleBtn = document.getElementById('googleSignin');
+            if (googleBtn) {
+                googleBtn.addEventListener('click', async () => {
+                    const messageDiv = document.getElementById('message');
+                    try {
+                        console.log('Starting Google signin...');
+                        const provider = new GoogleAuthProvider();
+                        provider.addScope('email');
+                        provider.addScope('profile');
+                        
+                        const result = await signInWithPopup(auth, provider);
+                        console.log('Google signin result:', result);
+                        
+                        // Check if this is a new user
+                        if (result.additionalUserInfo && result.additionalUserInfo.isNewUser) {
+                            // Delete the newly created user
+                            await result.user.delete();
+                            messageDiv.innerHTML = `<div class="error">No account found with this Google account. Please sign up first.</div>`;
+                            return;
+                        }
+                        
+                        messageDiv.innerHTML = '<div class="success">Google signin successful! Redirecting...</div>';
+                        setTimeout(() => window.location.href = 'track.html', 1000);
+                    } catch (error) {
+                        console.error('Google signin error:', error);
+                        messageDiv.innerHTML = `<div class="error">Google signin failed: ${error.message}</div>`;
+                    }
+                });
+            }
+            
+            // GitHub signin
+            const githubBtn = document.getElementById('githubSignin');
+            if (githubBtn) {
+                githubBtn.addEventListener('click', async () => {
+                    const messageDiv = document.getElementById('message');
+                    try {
+                        console.log('Starting GitHub signin...');
+                        const provider = new GithubAuthProvider();
+                        provider.addScope('user:email');
+                        
+                        const result = await signInWithPopup(auth, provider);
+                        console.log('GitHub signin result:', result);
+                        
+                        // Check if this is a new user
+                        if (result.additionalUserInfo && result.additionalUserInfo.isNewUser) {
+                            // Delete the newly created user
+                            await result.user.delete();
+                            messageDiv.innerHTML = `<div class="error">No account found with this GitHub account. Please sign up first.</div>`;
+                            return;
+                        }
+                        
+                        messageDiv.innerHTML = '<div class="success">GitHub signin successful! Redirecting...</div>';
+                        setTimeout(() => window.location.href = 'track.html', 1000);
+                    } catch (error) {
+                        console.error('GitHub signin error:', error);
+                        messageDiv.innerHTML = `<div class="error">GitHub signin failed: ${error.message}</div>`;
+                    }
+                });
             }
         });
-        
-        // Google signin
-        window.signInWithGoogle = async () => {
-            try {
-                const provider = new GoogleAuthProvider();
-                await signInWithPopup(auth, provider);
-                window.location.href = 'track.html';
-            } catch (error) {
-                document.getElementById('message').innerHTML = `<div class="error">${error.message}</div>`;
-            }
-        };
-        
-        // GitHub signin
-        window.signInWithGitHub = async () => {
-            try {
-                const provider = new GithubAuthProvider();
-                await signInWithPopup(auth, provider);
-                window.location.href = 'track.html';
-            } catch (error) {
-                document.getElementById('message').innerHTML = `<div class="error">${error.message}</div>`;
-            }
-        };
     </script>
 </body>
 </html>
