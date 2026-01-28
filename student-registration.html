@@ -66,6 +66,11 @@
                 Continue with Google
             </button>
             
+            <button type="button" class="social-btn github-btn" id="githubSignup">
+                <i class="fab fa-github"></i>
+                Continue with GitHub
+            </button>
+            
             <div class="divider">
                 <span>or sign up with email</span>
             </div>
@@ -106,10 +111,45 @@
     </div>
 
     <script type="module">
-        import { auth, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, db, collection, addDoc, query, where, getDocs } from './firebase-config.js';
+        import { auth, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, db, collection, addDoc, query, where, getDocs } from './firebase-config.js';
+        
+        // Check if user already exists in Firestore
+        async function checkUserExists(email) {
+            try {
+                const q = query(collection(db, 'users'), where('email', '==', email));
+                const querySnapshot = await getDocs(q);
+                return !querySnapshot.empty;
+            } catch (error) {
+                console.error('Error checking user existence:', error);
+                return false;
+            }
+        }
+        
+        // Store user data only if not exists
+        async function storeUserData(userData) {
+            try {
+                const exists = await checkUserExists(userData.email);
+                if (exists) {
+                    console.log('User already exists in database, skipping storage');
+                    return null;
+                }
+                
+                console.log('Storing new user data:', userData);
+                const docRef = await addDoc(collection(db, 'users'), userData);
+                console.log('✅ User data stored successfully with ID:', docRef.id);
+                return docRef;
+            } catch (error) {
+                console.error('❌ Firestore error:', error);
+                throw error;
+            }
+        }
         
         // Wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
+            
+            // Test Firestore connection
+            console.log('Firebase app initialized:', !!auth);
+            console.log('Firestore initialized:', !!db);
             
             // Email signup
             const signupForm = document.getElementById('signupForm');
@@ -133,17 +173,21 @@
                         await updateProfile(userCredential.user, { displayName: fullName });
                         
                         // Store user data in Firestore
-                        await addDoc(collection(db, 'users'), {
+                        const userData = {
                             uid: userCredential.user.uid,
                             email: email,
                             displayName: fullName,
                             provider: 'email',
-                            createdAt: new Date().toISOString()
-                        });
+                            createdAt: new Date().toISOString(),
+                            timestamp: Date.now()
+                        };
+                        
+                        await storeUserData(userData);
                         
                         messageDiv.innerHTML = '<div class="success">Account created successfully!</div>';
                         setTimeout(() => window.location.href = 'signin.html', 1500);
                     } catch (error) {
+                        console.error('Signup error:', error);
                         messageDiv.innerHTML = `<div class="error">${error.message}</div>`;
                     }
                 });
@@ -155,30 +199,60 @@
                 googleBtn.addEventListener('click', async () => {
                     const messageDiv = document.getElementById('message');
                     try {
-                        console.log('Starting Google signup...');
                         const provider = new GoogleAuthProvider();
-                        provider.addScope('email');
-                        provider.addScope('profile');
-                        
                         const result = await signInWithPopup(auth, provider);
                         const user = result.user;
                         
-                        // Store user data in Firestore
-                        await addDoc(collection(db, 'users'), {
+                        // Store user data in Firestore (only if new)
+                        const userData = {
                             uid: user.uid,
                             email: user.email,
                             displayName: user.displayName,
                             photoURL: user.photoURL,
                             provider: 'google',
-                            createdAt: new Date().toISOString()
-                        });
+                            createdAt: new Date().toISOString(),
+                            timestamp: Date.now()
+                        };
                         
-                        console.log('Google signup successful and data stored:', user);
+                        await storeUserData(userData);
+                        
                         messageDiv.innerHTML = '<div class="success">Google signup successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {
                         console.error('Google signup error:', error);
                         messageDiv.innerHTML = `<div class="error">Google signup failed: ${error.message}</div>`;
+                    }
+                });
+            }
+            
+            // GitHub signup
+            const githubBtn = document.getElementById('githubSignup');
+            if (githubBtn) {
+                githubBtn.addEventListener('click', async () => {
+                    const messageDiv = document.getElementById('message');
+                    try {
+                        const provider = new GithubAuthProvider();
+                        const result = await signInWithPopup(auth, provider);
+                        const user = result.user;
+                        
+                        // Store user data in Firestore (only if new)
+                        const userData = {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName,
+                            photoURL: user.photoURL,
+                            provider: 'github',
+                            createdAt: new Date().toISOString(),
+                            timestamp: Date.now()
+                        };
+                        
+                        await storeUserData(userData);
+                        
+                        messageDiv.innerHTML = '<div class="success">GitHub signup successful! Redirecting...</div>';
+                        setTimeout(() => window.location.href = 'track.html', 1000);
+                    } catch (error) {
+                        console.error('GitHub signup error:', error);
+                        messageDiv.innerHTML = `<div class="error">GitHub signup failed: ${error.message}</div>`;
                     }
                 });
             }

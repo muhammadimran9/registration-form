@@ -65,6 +65,11 @@
                 Continue with Google
             </button>
             
+            <button type="button" class="social-btn github-btn" id="githubSignin">
+                <i class="fab fa-github"></i>
+                Continue with GitHub
+            </button>
+            
             <div class="divider">
                 <span>or sign in with email</span>
             </div>
@@ -95,7 +100,19 @@
     </div>
 
     <script type="module">
-        import { auth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, db, collection, query, where, getDocs } from './firebase-config.js';
+        import { auth, signInWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, db, collection, query, where, getDocs } from './firebase-config.js';
+        
+        // Check if user exists in Firestore
+        async function checkUserExists(email) {
+            try {
+                const q = query(collection(db, 'users'), where('email', '==', email));
+                const querySnapshot = await getDocs(q);
+                return !querySnapshot.empty;
+            } catch (error) {
+                console.error('Error checking user existence:', error);
+                return false;
+            }
+        }
         
         // Wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
@@ -126,31 +143,50 @@
                 googleBtn.addEventListener('click', async () => {
                     const messageDiv = document.getElementById('message');
                     try {
-                        console.log('Starting Google signin...');
                         const provider = new GoogleAuthProvider();
-                        provider.addScope('email');
-                        provider.addScope('profile');
-                        
                         const result = await signInWithPopup(auth, provider);
                         const user = result.user;
                         
-                        // Check if user exists in Firestore
-                        const q = query(collection(db, 'users'), where('email', '==', user.email));
-                        const querySnapshot = await getDocs(q);
-                        
-                        if (querySnapshot.empty) {
-                            // User not found in database, delete from auth and show error
+                        // Check if user exists in database
+                        const exists = await checkUserExists(user.email);
+                        if (!exists) {
                             await user.delete();
                             messageDiv.innerHTML = '<div class="error">No account found with this Google account. Please sign up first.</div>';
                             return;
                         }
                         
-                        console.log('Google signin successful:', user);
                         messageDiv.innerHTML = '<div class="success">Google signin successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {
                         console.error('Google signin error:', error);
                         messageDiv.innerHTML = `<div class="error">Google signin failed: ${error.message}</div>`;
+                    }
+                });
+            }
+            
+            // GitHub signin
+            const githubBtn = document.getElementById('githubSignin');
+            if (githubBtn) {
+                githubBtn.addEventListener('click', async () => {
+                    const messageDiv = document.getElementById('message');
+                    try {
+                        const provider = new GithubAuthProvider();
+                        const result = await signInWithPopup(auth, provider);
+                        const user = result.user;
+                        
+                        // Check if user exists in database
+                        const exists = await checkUserExists(user.email);
+                        if (!exists) {
+                            await user.delete();
+                            messageDiv.innerHTML = '<div class="error">No account found with this GitHub account. Please sign up first.</div>';
+                            return;
+                        }
+                        
+                        messageDiv.innerHTML = '<div class="success">GitHub signin successful! Redirecting...</div>';
+                        setTimeout(() => window.location.href = 'track.html', 1000);
+                    } catch (error) {
+                        console.error('GitHub signin error:', error);
+                        messageDiv.innerHTML = `<div class="error">GitHub signin failed: ${error.message}</div>`;
                     }
                 });
             }
