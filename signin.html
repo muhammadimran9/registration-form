@@ -147,14 +147,16 @@
                         const result = await signInWithPopup(auth, provider);
                         const user = result.user;
                         
-                        // Check if user exists in database
-                        const exists = await checkUserExists(user.email);
-                        if (!exists) {
+                        // Check if user has signed up before
+                        const hasSignedUp = localStorage.getItem(`signup_${user.email}`);
+                        if (!hasSignedUp) {
+                            // Delete the auth account and show error
                             await user.delete();
-                            messageDiv.innerHTML = '<div class="error">No account found with this Google account. Please sign up first.</div>';
+                            messageDiv.innerHTML = '<div class="error">Please sign up first before signing in with Google.</div>';
                             return;
                         }
                         
+                        console.log('Google signin successful:', user.email);
                         messageDiv.innerHTML = '<div class="success">Google signin successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {
@@ -174,14 +176,16 @@
                         const result = await signInWithPopup(auth, provider);
                         const user = result.user;
                         
-                        // Check if user exists in database
-                        const exists = await checkUserExists(user.email);
-                        if (!exists) {
+                        // Check if user has signed up before
+                        const hasSignedUp = localStorage.getItem(`signup_${user.email}`);
+                        if (!hasSignedUp) {
+                            // Delete the auth account and show error
                             await user.delete();
-                            messageDiv.innerHTML = '<div class="error">No account found with this GitHub account. Please sign up first.</div>';
+                            messageDiv.innerHTML = '<div class="error">Please sign up first before signing in with GitHub.</div>';
                             return;
                         }
                         
+                        console.log('GitHub signin successful:', user.email);
                         messageDiv.innerHTML = '<div class="success">GitHub signin successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {

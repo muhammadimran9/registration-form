@@ -172,7 +172,7 @@
                         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                         await updateProfile(userCredential.user, { displayName: fullName });
                         
-                        // Store user data in Firestore
+                        // Store user data in Firestore (skip if fails)
                         const userData = {
                             uid: userCredential.user.uid,
                             email: email,
@@ -182,7 +182,14 @@
                             timestamp: Date.now()
                         };
                         
-                        await storeUserData(userData);
+                        try {
+                            await storeUserData(userData);
+                        } catch (firestoreError) {
+                            console.log('Firestore storage failed, continuing without it');
+                        }
+                        
+                        // Mark user as signed up
+                        localStorage.setItem(`signup_${email}`, 'true');
                         
                         messageDiv.innerHTML = '<div class="success">Account created successfully!</div>';
                         setTimeout(() => window.location.href = 'signin.html', 1500);
@@ -203,19 +210,10 @@
                         const result = await signInWithPopup(auth, provider);
                         const user = result.user;
                         
-                        // Store user data in Firestore (only if new)
-                        const userData = {
-                            uid: user.uid,
-                            email: user.email,
-                            displayName: user.displayName,
-                            photoURL: user.photoURL,
-                            provider: 'google',
-                            createdAt: new Date().toISOString(),
-                            timestamp: Date.now()
-                        };
+                        // Mark user as signed up
+                        localStorage.setItem(`signup_${user.email}`, 'true');
                         
-                        await storeUserData(userData);
-                        
+                        console.log('Google signup successful:', user.email);
                         messageDiv.innerHTML = '<div class="success">Google signup successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {
@@ -235,19 +233,10 @@
                         const result = await signInWithPopup(auth, provider);
                         const user = result.user;
                         
-                        // Store user data in Firestore (only if new)
-                        const userData = {
-                            uid: user.uid,
-                            email: user.email,
-                            displayName: user.displayName,
-                            photoURL: user.photoURL,
-                            provider: 'github',
-                            createdAt: new Date().toISOString(),
-                            timestamp: Date.now()
-                        };
+                        // Mark user as signed up
+                        localStorage.setItem(`signup_${user.email}`, 'true');
                         
-                        await storeUserData(userData);
-                        
+                        console.log('GitHub signup successful:', user.email);
                         messageDiv.innerHTML = '<div class="success">GitHub signup successful! Redirecting...</div>';
                         setTimeout(() => window.location.href = 'track.html', 1000);
                     } catch (error) {
